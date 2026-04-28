@@ -5,13 +5,14 @@ import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import { saveMission, loadMissions, saveReport, saveDroneRecceMission, saveBatteryAllocation } from './lib/db';
+import PlatformTour from './components/PlatformTour';
 import {
   Map as MapIcon, Crosshair, Navigation, BarChart2, FileText,
   Layers, Clock, Download, Share2, ChevronDown, ChevronUp,
   Mountain, Shield, Target, Trash2, Info, X,
   CheckCircle, AlertTriangle, XCircle, TrendingUp,
   MapPin, Zap, Settings, Pencil, Globe, Cpu, Plane,
-  RotateCcw, PenTool,
+  RotateCcw, PenTool, Compass,
 } from 'lucide-react';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -595,6 +596,7 @@ function CoordDisplay({ coords }) {
 /* ═══════════════════════════════════════════ */
 export default function App() {
   const [bootDone, setBootDone] = useState(false);
+  const [tourActive, setTourActive] = useState(false);
   const [activeTab, setActiveTab] = useState('mission');
   const [activeDistrict, setActiveDistrict] = useState(DISTRICT_OPTIONS[2]);
   const live = useLiveMission(activeDistrict);
@@ -1486,6 +1488,16 @@ export default function App() {
     }
   }, [bootDone]);
 
+  /* ───── FIRST-TIME TOUR AUTO-LAUNCH ───── */
+  useEffect(() => {
+    if (!bootDone) return;
+    const seen = localStorage.getItem('dronacharya_tour_seen');
+    if (!seen) {
+      const timer = setTimeout(() => setTourActive(true), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [bootDone]);
+
   /* ───── MAPBOX DRAW INITIALIZATION ───── */
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || drawRef.current) return;
@@ -1802,6 +1814,9 @@ export default function App() {
                     : 'OFFLINE'}
             </span>
           </div>
+          <button className="tour-trigger-btn" onClick={() => setTourActive(true)}>
+            <Compass size={12} /> Take Tour
+          </button>
           <span className="version-badge">
             <Cpu size={9} /> {COMPANY.version}
           </span>
@@ -2119,6 +2134,21 @@ export default function App() {
           </motion.div>
         )}
       </div>
+
+      {/* ─── PLATFORM TOUR ─── */}
+      <PlatformTour
+        active={tourActive}
+        onExit={() => setTourActive(false)}
+        setActiveTab={setActiveTab}
+        setActiveDistrict={setActiveDistrict}
+        setMission={setMission}
+        setLayers={setLayers}
+        setSelectedCandidate={setSelectedCandidate}
+        setDetailCandidate={setDetailCandidate}
+        setAllocations={setAllocations}
+        analysisResult={analysisResult}
+        candidates={CANDIDATES}
+      />
     </div>
   );
 }
