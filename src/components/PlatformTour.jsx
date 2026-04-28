@@ -1,287 +1,209 @@
-/* ═══════════════════════════════════════════════════════════ */
-/*  PLATFORM TOUR — INTERACTIVE GUIDED DEMO                  */
-/*  Cinematic product walkthrough for Dronacharya Recce       */
-/* ═══════════════════════════════════════════════════════════ */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Play, X, SkipForward, Pause, ChevronRight,
-  Compass, Target, Crosshair, Navigation,
-  BarChart2, FileText, Shield, Layers, Zap, Map,
+  Play, Pause, ChevronRight, Compass, Target, Crosshair,
+  Navigation, BarChart2, FileText, Layers, Zap,
 } from 'lucide-react';
 import './PlatformTour.css';
 
+/* ── SONITPUR AOI for demo ── */
+const DEMO_AOI = {
+  type: 'Feature',
+  geometry: {
+    type: 'Polygon',
+    coordinates: [[[92.75, 26.65], [92.85, 26.65], [92.85, 26.72], [92.75, 26.72], [92.75, 26.65]]],
+  },
+  properties: { district: 'Sonitpur' },
+};
+
 /* ── STEP DEFINITIONS ── */
 const TOUR_STEPS = [
-  /* ─── WELCOME / BRAND ─── */
   {
-    id: 'brand',
-    tab: null,
-    target: '.navbar-brand',
-    action: 'hover',
-    title: 'Welcome to Dronacharya',
-    description: 'An <strong>AI-powered artillery terrain intelligence</strong> platform built for the Indian Army. This system automates gun area recce using satellite imagery, terrain analysis, and deep learning.',
-    delay: 4500,
-  },
-  /* ─── MISSION TAB FLOW ─── */
-  {
-    id: 'district',
-    tab: 'mission',
-    target: '.sidebar .form-select',
-    action: 'highlight',
-    title: 'Select Operational District',
-    description: 'Choose the operational district. The system loads <strong>satellite-derived terrain data</strong>, road networks, and elevation models for the selected region.',
-    delay: 4000,
-    onEnter: (props) => {
-      props.setActiveDistrict('Sonitpur');
-    },
-  },
-  {
-    id: 'gun-system',
-    tab: 'mission',
-    target: '.sidebar .form-group:nth-child(3) .form-select',
-    action: 'highlight',
-    title: 'Choose Artillery Platform',
-    description: 'Select your gun system. The AI tailors slope, area, and separation analysis to this platform\'s <strong>mobility constraints and deployment footprint</strong>.',
-    delay: 4000,
-    onEnter: (props) => {
-      props.setMission(m => ({ ...m, gunType: 'BOFORS' }));
-    },
-  },
-  {
-    id: 'num-guns',
-    tab: 'mission',
-    target: '.sidebar .btn-group .btn-option:nth-child(2)',
-    action: 'click',
-    title: 'Set Number of Guns',
-    description: 'Configure the <strong>number of guns per deployment</strong>. Quick-set buttons allow rapid parameter entry during field planning.',
-    delay: 3500,
-    onEnter: (props) => {
-      props.setMission(m => ({ ...m, numGuns: 6 }));
-    },
-  },
-  {
-    id: 'batteries',
-    tab: 'mission',
-    target: '.sidebar .form-group:nth-child(5) .btn-group .btn-option:nth-child(2)',
-    action: 'click',
-    title: 'Configure Batteries',
-    description: 'Set the battery count. The system calculates <strong>optimal gun-to-battery allocation</strong> and recommends separate deployment areas for each battery.',
-    delay: 3500,
-    onEnter: (props) => {
-      props.setMission(m => ({ ...m, batteries: 2 }));
-    },
-  },
-  {
-    id: 'day-night',
-    tab: 'mission',
-    target: '.sidebar .form-group:nth-child(7) .btn-group .btn-option:first-child',
-    action: 'click',
-    title: 'Operational Timing',
-    description: 'Select <strong>Day / Night / Both</strong> operations. Night missions apply enhanced concealment and thermal signature parameters to the scoring model.',
-    delay: 3500,
-  },
-  {
-    id: 'threat',
-    tab: 'mission',
-    target: '.sidebar .form-group:nth-child(9) .btn-group .btn-option:nth-child(2)',
-    action: 'click',
-    title: 'Set Threat Level',
-    description: 'Higher threat levels increase weight on <strong>concealment, dispersion, and counter-battery survivability</strong> in the multi-criteria scoring.',
-    delay: 3500,
-    onEnter: (props) => {
-      props.setMission(m => ({ ...m, threatLevel: 'Medium' }));
-    },
-  },
-  {
-    id: 'draw-aoi',
-    tab: 'mission',
-    target: '.draw-toolbar .draw-btn:first-child',
-    action: 'hover',
-    title: 'Draw Area of Interest',
-    description: 'Draw a custom <strong>AOI polygon</strong> on the map to focus analysis on a specific sector, or use the full district boundary for wide-area recce.',
+    id: 'welcome-brand', tab: null, target: '.navbar-brand', action: 'hover',
+    title: 'Dronacharya Recce System',
+    description: 'Welcome to an <strong>AI-powered artillery terrain intelligence</strong> platform. Let us walk you through the complete recce workflow.',
     delay: 4000,
   },
   {
-    id: 'ai-prescreen',
-    tab: 'mission',
-    target: '.sidebar .btn-primary',
-    action: 'hover',
-    title: 'AI PRE-SCREEN',
-    description: 'Click to run the <strong>full suitability analysis</strong> using 27+ terrain, access, and concealment parameters derived from 16+ satellite and GIS datasets. Candidate gun areas are ranked automatically.',
-    delay: 5000,
+    id: 'select-district', tab: 'mission', target: '.sidebar .form-select', action: 'click',
+    title: 'Selecting Operational District',
+    description: 'The system is selecting <strong>Sonitpur</strong> — loading satellite-derived terrain data, elevation models, and road networks for this region.',
+    delay: 3500,
+    onEnter: (p) => { p.setActiveDistrict('Sonitpur'); },
   },
-  /* ─── ANALYSIS TAB ─── */
   {
-    id: 'analysis-terrain',
-    tab: 'analysis',
-    target: '.sidebar',
-    action: 'hover',
-    title: 'Terrain Analysis',
-    description: 'The terrain panel displays <strong>ESA WorldCover land cover distribution</strong>, elevation statistics, and classification breakdown computed from satellite data.',
+    id: 'gun-system', tab: 'mission', target: '.sidebar .form-group:nth-child(3) .form-select', action: 'click',
+    title: 'Choosing Artillery Platform',
+    description: 'Selecting the <strong>FH-77B Bofors (155mm)</strong>. The AI will tailor slope, area, and separation requirements to this platform.',
+    delay: 3500,
+    onEnter: (p) => { p.setMission(m => ({ ...m, gunType: 'BOFORS' })); },
+  },
+  {
+    id: 'num-guns', tab: 'mission', target: '.sidebar .form-group:nth-child(4) .btn-group', action: 'click',
+    title: 'Setting Number of Guns',
+    description: 'Configuring <strong>6 guns</strong> for this deployment. Quick-set buttons enable rapid parameter entry during field planning.',
+    delay: 3000,
+    onEnter: (p) => { p.setMission(m => ({ ...m, numGuns: 6 })); },
+  },
+  {
+    id: 'batteries', tab: 'mission', target: '.sidebar .form-group:nth-child(5) .btn-group', action: 'click',
+    title: 'Configuring Batteries',
+    description: 'Setting <strong>2 batteries</strong>. The system calculates optimal gun-to-battery allocation and recommends separate deployment areas.',
+    delay: 3000,
+    onEnter: (p) => { p.setMission(m => ({ ...m, batteries: 2 })); },
+  },
+  {
+    id: 'day-night', tab: 'mission', target: '.sidebar .form-group:nth-child(7) .btn-group', action: 'click',
+    title: 'Operational Timing → Day',
+    description: 'Selecting <strong>Day operations</strong>. Night missions apply enhanced concealment and thermal signature parameters.',
+    delay: 2800,
+    onEnter: (p) => { p.setMission(m => ({ ...m, dayNight: 'Day' })); },
+  },
+  {
+    id: 'season', tab: 'mission', target: '.sidebar .form-group:nth-child(8) .form-select', action: 'click',
+    title: 'Season → Post-Monsoon',
+    description: 'Choosing <strong>Post-Monsoon</strong> season. Soil bearing capacity and vegetation density vary significantly by season.',
+    delay: 2800,
+    onEnter: (p) => { p.setMission(m => ({ ...m, season: 'Post-Monsoon' })); },
+  },
+  {
+    id: 'threat', tab: 'mission', target: '.sidebar .form-group:nth-child(9) .btn-group', action: 'click',
+    title: 'Threat Level → Medium',
+    description: 'Setting <strong>Medium threat</strong>. Higher levels increase weight on concealment, dispersion, and counter-battery survivability.',
+    delay: 3000,
+    onEnter: (p) => { p.setMission(m => ({ ...m, threatLevel: 'Medium' })); },
+  },
+  {
+    id: 'draw-aoi', tab: 'mission', target: '.draw-toolbar .draw-btn:first-child', action: 'click',
+    title: 'Drawing Area of Interest',
+    description: 'An <strong>AOI polygon</strong> is being drawn over the Sonitpur sector to focus analysis on the operational area.',
+    delay: 3500,
+    onEnter: (p) => { p.setCustomAOI(DEMO_AOI); },
+  },
+  {
+    id: 'ai-prescreen', tab: 'mission', target: '.sidebar .btn-primary', action: 'click',
+    title: 'Launching AI PRE-SCREEN',
+    description: 'Running <strong>full suitability analysis</strong> using 27+ terrain, access, and concealment parameters derived from 16+ satellite and GIS datasets.',
     delay: 4500,
   },
   {
-    id: 'analysis-results',
-    tab: 'analysis',
-    target: '.results-panel',
-    action: 'hover',
+    id: 'analysis-terrain', tab: 'analysis', target: '.sidebar', action: 'hover',
+    title: 'Terrain Intelligence',
+    description: 'The terrain panel shows <strong>ESA WorldCover land cover</strong> distribution — classifying cropland, forest, grassland, water bodies, and built-up areas from satellite imagery.',
+    delay: 4000,
+  },
+  {
+    id: 'analysis-results', tab: 'analysis', target: '.results-panel', action: 'hover',
     title: 'Ranked Gun Areas',
-    description: 'Candidate areas are ranked by a <strong>composite suitability score</strong> spanning slope, concealment, access roads, water proximity, soil bearing capacity, and operational parameters.',
-    delay: 5000,
+    description: 'Candidates are ranked by <strong>composite suitability score</strong> — spanning slope, concealment, road access, water proximity, soil capacity, and 20+ more parameters.',
+    delay: 4500,
   },
   {
-    id: 'layer-landcover',
-    tab: 'analysis',
-    target: '.layer-panel',
-    action: 'hover',
+    id: 'layers-toggle', tab: 'analysis', target: '.layer-panel', action: 'click',
     title: 'Intelligence Layers',
-    description: 'Toggle map layers to visualize <strong>landcover, slope gradients, road networks, building footprints, and the AI suitability heatmap</strong> across the operational area.',
-    delay: 4500,
-    onEnter: (props) => {
-      props.setLayers(l => ({ ...l, landcover: true, suitability: true }));
-    },
+    description: 'Toggling <strong>landcover and suitability layers</strong> — visualizing AI-scored terrain fitness, vegetation density, and road networks across the sector.',
+    delay: 4000,
+    onEnter: (p) => { p.setLayers(l => ({ ...l, landcover: true, suitability: true })); },
   },
   {
-    id: 'layer-cleanup',
-    tab: 'analysis',
-    target: '.layer-panel',
-    action: 'none',
-    title: 'Layer Visualization',
-    description: 'Each layer draws from processed <strong>Sentinel-2, ESA WorldCover, SRTM DEM, and OpenStreetMap</strong> data. Layers can be toggled independently for tactical clarity.',
-    delay: 3500,
-    onEnter: (props) => {
-      // Reset layers after showing them
-      props.setLayers(l => ({ ...l, landcover: false, suitability: false }));
-    },
+    id: 'layers-off', tab: 'analysis', target: '.layer-panel', action: 'none',
+    title: 'Layer Controls',
+    description: 'Each layer is derived from <strong>Sentinel-2, SRTM DEM, ESA WorldCover, and OpenStreetMap</strong>. Layers toggle independently for tactical clarity.',
+    delay: 3000,
+    onEnter: (p) => { p.setLayers(l => ({ ...l, landcover: false, suitability: false })); },
   },
-  /* ─── ROUTES TAB ─── */
   {
-    id: 'routes-tab',
-    tab: 'routes',
-    target: '.results-panel .results-header',
-    action: 'hover',
+    id: 'top-candidate', tab: 'analysis', target: '.results-body > div:first-child',
+    action: 'click',
+    title: 'Top Recommended Area',
+    description: 'Opening the <strong>#1 ranked candidate</strong>. This area has the highest composite score across all terrain and operational parameters.',
+    delay: 4000,
+    onEnter: (p) => {
+      if (p.candidates?.[0]) {
+        p.setSelectedCandidate(p.candidates[0].id);
+        p.setDetailCandidate(p.candidates[0].id);
+      }
+    },
+    fallbackTarget: '.results-panel',
+  },
+  {
+    id: 'route-tab', tab: 'routes', target: '.results-panel .results-header', action: 'hover',
     title: 'Route Planning',
-    description: 'The route planner computes <strong>optimal access routes</strong> from the nearest major road to each candidate gun area, accounting for terrain gradient and road class.',
+    description: 'The route module computes <strong>optimal access routes</strong> from the nearest highway to each gun area — accounting for terrain gradient and road class.',
     delay: 4500,
+    onEnter: (p) => { p.setDetailCandidate(null); },
   },
   {
-    id: 'drone-section',
-    tab: 'routes',
-    target: '.results-panel .results-body',
-    action: 'hover',
+    id: 'drone-section', tab: 'routes', target: '.results-panel .results-body', action: 'hover',
     title: 'Drone Recce Missions',
-    description: 'Assign <strong>UAV reconnaissance</strong> to verify routes and ground-truth candidate areas. Drone waypoints are generated for real-world deployment and can be exported as GeoJSON or KML.',
-    delay: 5000,
-  },
-  /* ─── DASHBOARD TAB ─── */
-  {
-    id: 'dashboard',
-    tab: 'dashboard',
-    target: '.dashboard-grid',
-    action: 'hover',
-    title: 'Commander Dashboard',
-    description: 'A consolidated <strong>operational overview</strong> with mission metrics: candidate count by rating, best suitability score, recommended area, deployment time estimates, and route feasibility.',
-    delay: 5000,
-    fallbackTarget: '.main-content > div',
-  },
-  {
-    id: 'battery-allocation',
-    tab: 'dashboard',
-    target: '.allocation-table',
-    action: 'hover',
-    title: 'Battery Allocation',
-    description: 'Allocate batteries to candidate areas based on <strong>AI scoring and tactical requirements</strong>. The commander can override automatic recommendations for operational flexibility.',
+    description: 'Assign <strong>UAV reconnaissance</strong> to verify routes and validate ground conditions. Waypoints export as GeoJSON/KML for drone controllers.',
     delay: 4500,
-    fallbackTarget: '.main-content > div',
   },
-  /* ─── REPORTS TAB ─── */
   {
-    id: 'reports',
-    tab: 'reports',
-    target: '.report-header',
-    action: 'hover',
+    id: 'dashboard-metrics', tab: 'dashboard', target: '.main-content > div', action: 'hover',
+    title: 'Commander Dashboard',
+    description: 'Consolidated <strong>operational overview</strong> with mission metrics: candidate ratings, best scores, deployment time estimates, and route feasibility.',
+    delay: 4500,
+  },
+  {
+    id: 'reports-page', tab: 'reports', target: '.main-content > div', action: 'hover',
     title: 'Mission Report',
-    description: 'A comprehensive <strong>operational report</strong> summarizing all findings: terrain analysis, ranked candidates, route assessment, drone recce status, risk summary, and battery allocation.',
+    description: 'A comprehensive <strong>operational report</strong> ready for commander review — covering terrain analysis, ranked candidates, route assessment, drone recce, risks, and battery allocation.',
     delay: 5000,
-    fallbackTarget: '.main-content > div',
   },
   {
-    id: 'report-download',
-    tab: 'reports',
-    target: '.report-actions',
-    action: 'hover',
+    id: 'report-export', tab: 'reports', target: '.report-actions', action: 'hover',
     title: 'Export & Share',
-    description: 'Download the final report as a <strong>print-ready PDF</strong> or export mission data as KML for integration with military GIS systems and command-level briefings.',
+    description: 'Download the report as a <strong>print-ready PDF</strong> or export as KML for military GIS integration. The complete recce workflow is now done.',
     delay: 4500,
     fallbackTarget: '.main-content > div',
   },
 ];
 
-/* ── CURSOR SVG ── */
 const CursorSvg = () => (
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M5.65 2.92L19.08 12.03C19.56 12.35 19.36 13.1 18.79 13.13L12.48 13.46L9.8 19.23C9.56 19.75 8.8 19.67 8.68 19.12L5.05 3.61C4.94 3.12 5.28 2.67 5.65 2.92Z"
-      fill="url(#cursor-grad)"
-      stroke="#0ea5e9"
-      strokeWidth="0.8"
-    />
+    <path d="M5.65 2.92L19.08 12.03C19.56 12.35 19.36 13.1 18.79 13.13L12.48 13.46L9.8 19.23C9.56 19.75 8.8 19.67 8.68 19.12L5.05 3.61C4.94 3.12 5.28 2.67 5.65 2.92Z"
+      fill="url(#cursor-grad)" stroke="#0ea5e9" strokeWidth="0.8" />
     <defs>
       <linearGradient id="cursor-grad" x1="5" y1="3" x2="15" y2="17" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#38bdf8" />
-        <stop offset="1" stopColor="#0ea5e9" />
+        <stop stopColor="#38bdf8" /><stop offset="1" stopColor="#0ea5e9" />
       </linearGradient>
     </defs>
   </svg>
 );
 
-/* ── WELCOME SCREEN ── */
 function TourWelcome({ onStart, onDismiss }) {
   return (
     <div className="tour-welcome">
       <div className="tour-welcome-card">
-        <div className="tour-welcome-icon">
-          <Compass size={26} />
-        </div>
+        <div className="tour-welcome-icon"><Compass size={28} /></div>
         <div className="tour-welcome-title">Platform Tour</div>
         <div className="tour-welcome-subtitle">
-          Experience the complete AI-powered Gun Area Recce workflow in an interactive guided demo.
+          Watch the complete AI-powered Gun Area Recce workflow — from mission setup to final report — in an interactive guided demo.
         </div>
         <div className="tour-welcome-features">
           <div className="tour-welcome-feature"><Target size={14} /> Mission Planning</div>
           <div className="tour-welcome-feature"><Crosshair size={14} /> AI Analysis</div>
-          <div className="tour-welcome-feature"><Navigation size={14} /> Route Planning</div>
+          <div className="tour-welcome-feature"><Navigation size={14} /> Route & Drone</div>
           <div className="tour-welcome-feature"><BarChart2 size={14} /> Dashboard</div>
           <div className="tour-welcome-feature"><Layers size={14} /> Intel Layers</div>
           <div className="tour-welcome-feature"><FileText size={14} /> Reports</div>
         </div>
         <div className="tour-welcome-actions">
           <button className="tour-btn-dismiss" onClick={onDismiss}>Skip</button>
-          <button className="tour-btn-start" onClick={onStart}>
-            <Play size={15} /> Start Tour
-          </button>
+          <button className="tour-btn-start" onClick={onStart}><Play size={15} /> Start Tour</button>
         </div>
       </div>
     </div>
   );
 }
 
-/* ── MAIN TOUR ENGINE ── */
 export default function PlatformTour({
-  active,
-  onExit,
-  setActiveTab,
-  setActiveDistrict,
-  setMission,
-  setLayers,
-  setSelectedCandidate,
-  setDetailCandidate,
-  setAllocations,
-  analysisResult,
-  candidates,
+  active, onExit, setActiveTab, setActiveDistrict, setMission,
+  setLayers, setSelectedCandidate, setDetailCandidate, setAllocations,
+  setCustomAOI, analysisResult, candidates,
 }) {
-  const [phase, setPhase] = useState('welcome'); // 'welcome' | 'running' | 'exiting'
+  const [phase, setPhase] = useState('welcome');
   const [stepIndex, setStepIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -290,145 +212,78 @@ export default function PlatformTour({
   const [clicking, setClicking] = useState(false);
   const [ripple, setRipple] = useState(null);
   const [tooltipVisible, setTooltipVisible] = useState(false);
-
   const timerRef = useRef(null);
   const stepRef = useRef(stepIndex);
   stepRef.current = stepIndex;
-
   const currentStep = TOUR_STEPS[stepIndex] || null;
   const totalSteps = TOUR_STEPS.length;
 
-  /* ── CLEANUP on unmount ── */
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
-  /* ── ESCAPE KEY ── */
   useEffect(() => {
-    const handler = (e) => {
-      if (e.key === 'Escape') exitTour();
-    };
+    const handler = (e) => { if (e.key === 'Escape') exitTour(); };
     if (active) window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [active]);
 
-  /* ── EXIT HANDLER ── */
   const exitTour = useCallback(() => {
     setPhase('exiting');
     if (timerRef.current) clearTimeout(timerRef.current);
     localStorage.setItem('dronacharya_tour_seen', 'true');
-    setTimeout(() => {
-      onExit();
-    }, 300);
+    setTimeout(() => onExit(), 300);
   }, [onExit]);
 
-  /* ── FIND AND SPOTLIGHT ELEMENT ── */
+  const positionTooltip = useCallback((rect, cx, cy) => {
+    const tw = 400, th = 200, m = 16;
+    if (!rect) { setTooltipPos({ x: cx - tw / 2, y: cy + 40 }); return; }
+    let y = rect.top + rect.height + m < window.innerHeight - th
+      ? rect.top + rect.height + m
+      : rect.top - th - m > 0 ? rect.top - th - m : Math.max(m, (window.innerHeight - th) / 2);
+    let x = rect.left;
+    if (x + tw > window.innerWidth - m) x = window.innerWidth - tw - m;
+    if (x < m) x = m;
+    setTooltipPos({ x, y });
+  }, []);
+
   const spotlightElement = useCallback((selector, fallback) => {
-    let el = document.querySelector(selector);
+    let el = selector ? document.querySelector(selector) : null;
     if (!el && fallback) el = document.querySelector(fallback);
     if (!el) {
-      // Fallback: center of screen
-      const cx = window.innerWidth / 2;
-      const cy = window.innerHeight / 2;
+      const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
       setCursorPos({ x: cx, y: cy });
       setSpotlightRect(null);
       positionTooltip(null, cx, cy);
       return null;
     }
-
     const rect = el.getBoundingClientRect();
     const pad = 8;
-    const spotRect = {
-      top: rect.top - pad,
-      left: rect.left - pad,
-      width: rect.width + pad * 2,
-      height: rect.height + pad * 2,
-    };
-
-    // Move cursor to center of element
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    setCursorPos({ x: cx, y: cy });
-    setSpotlightRect(spotRect);
-    positionTooltip(spotRect, cx, cy);
-
-    // Scroll element into view if needed
+    const sr = { top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 };
+    setCursorPos({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    setSpotlightRect(sr);
+    positionTooltip(sr, rect.left + rect.width / 2, rect.top + rect.height / 2);
     if (rect.top < 0 || rect.bottom > window.innerHeight) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-
     return el;
-  }, []);
+  }, [positionTooltip]);
 
-  /* ── TOOLTIP POSITIONING ── */
-  const positionTooltip = (rect, cx, cy) => {
-    const tooltipW = 360;
-    const tooltipH = 180;
-    const margin = 16;
+  const goNext = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    const next = stepRef.current + 1;
+    if (next >= totalSteps) { exitTour(); return; }
+    setStepIndex(next);
+  }, [totalSteps, exitTour]);
 
-    if (!rect) {
-      setTooltipPos({ x: cx - tooltipW / 2, y: cy + 40 });
-      return;
-    }
-
-    let x, y;
-    // Try below
-    if (rect.top + rect.height + tooltipH + margin < window.innerHeight) {
-      y = rect.top + rect.height + margin;
-    }
-    // Try above
-    else if (rect.top - tooltipH - margin > 0) {
-      y = rect.top - tooltipH - margin;
-    }
-    // Fallback: center
-    else {
-      y = Math.max(margin, (window.innerHeight - tooltipH) / 2);
-    }
-
-    // Horizontal: prefer right-aligned with target
-    x = rect.left;
-    if (x + tooltipW > window.innerWidth - margin) {
-      x = window.innerWidth - tooltipW - margin;
-    }
-    if (x < margin) x = margin;
-
-    setTooltipPos({ x, y });
-  };
-
-  /* ── EXECUTE STEP ── */
   const executeStep = useCallback((index) => {
     const step = TOUR_STEPS[index];
-    if (!step) {
-      exitTour();
-      return;
-    }
-
+    if (!step) { exitTour(); return; }
     setTooltipVisible(false);
-
-    // Switch tab if needed
-    if (step.tab && setActiveTab) {
-      setActiveTab(step.tab);
-    }
-
-    // Run onEnter callback
+    if (step.tab && setActiveTab) setActiveTab(step.tab);
     if (step.onEnter) {
-      step.onEnter({
-        setActiveDistrict,
-        setMission,
-        setLayers,
-        setSelectedCandidate,
-        setDetailCandidate,
-        setAllocations,
-      });
+      step.onEnter({ setActiveDistrict, setMission, setLayers, setSelectedCandidate, setDetailCandidate, setAllocations, setCustomAOI, candidates });
     }
-
-    // Wait a tick for DOM to update after tab switch, then spotlight
     setTimeout(() => {
-      const el = spotlightElement(step.target, step.fallbackTarget);
-
-      // Simulate click animation
+      spotlightElement(step.target, step.fallbackTarget);
       if (step.action === 'click') {
         setTimeout(() => {
           setClicking(true);
@@ -436,202 +291,94 @@ export default function PlatformTour({
           setTimeout(() => setClicking(false), 150);
         }, 500);
       }
-
-      // Show tooltip after cursor arrives
-      setTimeout(() => {
-        setTooltipVisible(true);
-      }, 600);
-
-      // Auto-advance (if not paused)
+      setTimeout(() => setTooltipVisible(true), 600);
       if (!paused) {
         timerRef.current = setTimeout(() => {
-          if (!paused && stepRef.current === index) {
-            goNext();
-          }
+          if (stepRef.current === index) goNext();
         }, step.delay || 4000);
       }
-    }, step.tab ? 400 : 150);
-  }, [spotlightElement, setActiveTab, setActiveDistrict, setMission, setLayers, setSelectedCandidate, setDetailCandidate, setAllocations, paused, exitTour]);
+    }, step.tab ? 500 : 200);
+  }, [spotlightElement, setActiveTab, setActiveDistrict, setMission, setLayers, setSelectedCandidate, setDetailCandidate, setAllocations, setCustomAOI, candidates, paused, exitTour, goNext, cursorPos]);
 
-  /* ── NAVIGATION ── */
-  const goNext = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    const next = stepRef.current + 1;
-    if (next >= totalSteps) {
-      exitTour();
-      return;
-    }
-    setStepIndex(next);
-  }, [totalSteps, exitTour]);
-
-  /* ── REACT TO STEP CHANGES ── */
   useEffect(() => {
-    if (phase === 'running') {
-      executeStep(stepIndex);
-    }
+    if (phase === 'running') executeStep(stepIndex);
   }, [stepIndex, phase]);
 
-  /* ── REACT TO PAUSE STATE ── */
   useEffect(() => {
-    if (paused) {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    } else if (phase === 'running') {
+    if (paused) { if (timerRef.current) clearTimeout(timerRef.current); }
+    else if (phase === 'running') {
       const step = TOUR_STEPS[stepIndex];
       if (step) {
         timerRef.current = setTimeout(() => {
-          if (stepRef.current === stepIndex) {
-            goNext();
-          }
-        }, (step.delay || 4000) / 2); // Resume with half-time
+          if (stepRef.current === stepIndex) goNext();
+        }, (step.delay || 4000) / 2);
       }
     }
   }, [paused]);
 
-  /* ── START TOUR ── */
-  const startTour = useCallback(() => {
-    setPhase('running');
-    setStepIndex(0);
-    setPaused(false);
-  }, []);
-
-  /* ── DISMISS (from welcome) ── */
-  const dismissTour = useCallback(() => {
-    localStorage.setItem('dronacharya_tour_seen', 'true');
-    onExit();
-  }, [onExit]);
+  const startTour = useCallback(() => { setPhase('running'); setStepIndex(0); setPaused(false); }, []);
+  const dismissTour = useCallback(() => { localStorage.setItem('dronacharya_tour_seen', 'true'); onExit(); }, [onExit]);
 
   if (!active) return null;
 
   return (
-    <>
-      <AnimatePresence>
-        {/* ── WELCOME SCREEN ── */}
-        {phase === 'welcome' && (
-          <motion.div
-            key="welcome"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <TourWelcome onStart={startTour} onDismiss={dismissTour} />
-          </motion.div>
-        )}
-
-        {/* ── RUNNING TOUR ── */}
-        {phase === 'running' && currentStep && (
-          <motion.div
-            key="tour"
-            className="tour-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            {/* Spotlight cutout */}
-            {spotlightRect && (
-              <div
-                className="tour-spotlight"
-                style={{
-                  top: spotlightRect.top,
-                  left: spotlightRect.left,
-                  width: spotlightRect.width,
-                  height: spotlightRect.height,
-                }}
-              />
+    <AnimatePresence>
+      {phase === 'welcome' && (
+        <motion.div key="welcome" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+          <TourWelcome onStart={startTour} onDismiss={dismissTour} />
+        </motion.div>
+      )}
+      {phase === 'running' && currentStep && (
+        <motion.div key="tour" className="tour-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+          {spotlightRect && (
+            <div className="tour-spotlight" style={{ top: spotlightRect.top, left: spotlightRect.left, width: spotlightRect.width, height: spotlightRect.height }} />
+          )}
+          {!spotlightRect && <div className="tour-backdrop active" onClick={exitTour} />}
+          <div className={`tour-cursor ${clicking ? 'clicking' : ''}`} style={{ left: cursorPos.x, top: cursorPos.y }}>
+            <CursorSvg />
+          </div>
+          <AnimatePresence>
+            {ripple && (
+              <motion.div key={ripple.id} className="tour-cursor-ripple" style={{ left: ripple.x, top: ripple.y }}
+                initial={{ opacity: 1 }} animate={{ opacity: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}
+                onAnimationComplete={() => setRipple(null)} />
             )}
-            {/* Backdrop (clicking anywhere on dark area exits tour) */}
-            {!spotlightRect && (
-              <div
-                className="tour-backdrop active"
-                onClick={exitTour}
-              />
+          </AnimatePresence>
+          <AnimatePresence>
+            {tooltipVisible && (
+              <motion.div key={`tt-${stepIndex}`} className="tour-tooltip" style={{ left: tooltipPos.x, top: tooltipPos.y }}
+                initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.96 }} transition={{ duration: 0.25 }}>
+                <div className="tour-tooltip-glow" />
+                <div className="tour-tooltip-header">
+                  <span className="tour-tooltip-step-badge">{stepIndex + 1}</span>
+                  <span className="tour-tooltip-title">{currentStep.title}</span>
+                </div>
+                <div className="tour-tooltip-body">
+                  <p className="tour-tooltip-desc" dangerouslySetInnerHTML={{ __html: currentStep.description }} />
+                </div>
+                <div className="tour-tooltip-footer">
+                  <div className="tour-tooltip-progress">
+                    <div className="tour-tooltip-progress-bar">
+                      <div className="tour-tooltip-progress-fill" style={{ width: `${((stepIndex + 1) / totalSteps) * 100}%` }} />
+                    </div>
+                    <span>{stepIndex + 1}/{totalSteps}</span>
+                  </div>
+                  <div className="tour-tooltip-actions">
+                    <button className="tour-btn tour-btn-skip" onClick={exitTour}>Skip</button>
+                    <button className="tour-btn tour-btn-pause" onClick={() => setPaused(p => !p)}>
+                      {paused ? <Play size={12} /> : <Pause size={12} />}
+                    </button>
+                    <button className="tour-btn tour-btn-next" onClick={goNext}>
+                      {stepIndex + 1 >= totalSteps ? 'Finish' : 'Next'} <ChevronRight size={13} />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
             )}
-
-            {/* Animated Cursor */}
-            <div
-              className={`tour-cursor ${clicking ? 'clicking' : ''}`}
-              style={{
-                left: cursorPos.x,
-                top: cursorPos.y,
-              }}
-            >
-              <CursorSvg />
-            </div>
-
-            {/* Ripple effect on click */}
-            <AnimatePresence>
-              {ripple && (
-                <motion.div
-                  key={ripple.id}
-                  className="tour-cursor-ripple"
-                  style={{ left: ripple.x, top: ripple.y }}
-                  initial={{ opacity: 1 }}
-                  animate={{ opacity: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.6 }}
-                  onAnimationComplete={() => setRipple(null)}
-                />
-              )}
-            </AnimatePresence>
-
-            {/* Tooltip */}
-            <AnimatePresence>
-              {tooltipVisible && (
-                <motion.div
-                  key={`tooltip-${stepIndex}`}
-                  className="tour-tooltip"
-                  style={{
-                    left: tooltipPos.x,
-                    top: tooltipPos.y,
-                  }}
-                  initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  <div className="tour-tooltip-glow" />
-                  <div className="tour-tooltip-header">
-                    <span className="tour-tooltip-step-badge">{stepIndex + 1}</span>
-                    <span className="tour-tooltip-title">{currentStep.title}</span>
-                  </div>
-                  <div className="tour-tooltip-body">
-                    <p
-                      className="tour-tooltip-desc"
-                      dangerouslySetInnerHTML={{ __html: currentStep.description }}
-                    />
-                  </div>
-                  <div className="tour-tooltip-footer">
-                    <div className="tour-tooltip-progress">
-                      <div className="tour-tooltip-progress-bar">
-                        <div
-                          className="tour-tooltip-progress-fill"
-                          style={{ width: `${((stepIndex + 1) / totalSteps) * 100}%` }}
-                        />
-                      </div>
-                      <span>{stepIndex + 1}/{totalSteps}</span>
-                    </div>
-                    <div className="tour-tooltip-actions">
-                      <button className="tour-btn tour-btn-skip" onClick={exitTour}>
-                        Skip
-                      </button>
-                      <button
-                        className="tour-btn tour-btn-pause"
-                        onClick={() => setPaused(p => !p)}
-                      >
-                        {paused ? <Play size={11} /> : <Pause size={11} />}
-                      </button>
-                      <button className="tour-btn tour-btn-next" onClick={goNext}>
-                        {stepIndex + 1 >= totalSteps ? 'Finish' : 'Next'} <ChevronRight size={12} />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+          </AnimatePresence>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
