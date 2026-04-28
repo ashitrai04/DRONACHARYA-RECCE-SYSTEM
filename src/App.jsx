@@ -4,6 +4,7 @@ import mapboxgl from 'mapbox-gl';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
+import { saveMission, loadMissions, saveReport, saveDroneRecceMission, saveBatteryAllocation } from './lib/db';
 import {
   Map as MapIcon, Crosshair, Navigation, BarChart2, FileText,
   Layers, Clock, Download, Share2, ChevronDown, ChevronUp,
@@ -749,6 +750,22 @@ export default function App() {
         minScore: 55,
       });
       setAnalysisResult(response);
+      
+      // Automatically save mission parameters to Supabase
+      saveMission({
+        name: mission.name || 'Unnamed Mission',
+        district: activeDistrict,
+        aoi_geojson: customAOI,
+        parameters: mission,
+        selected_gun: mission.gunType,
+        num_guns: mission.numGuns,
+        num_batteries: mission.batteries,
+        bearing: mission.targetBearing,
+        day_night: mission.dayNight,
+        season: mission.season,
+        threat_level: mission.threatLevel,
+      });
+
       setSelectedCandidate(response.candidates?.[0]?.id || null);
       setDetailCandidate(null);
       setPlannedRoutes({});
@@ -2112,11 +2129,75 @@ export default function App() {
 function MissionSidebar({ mission, setMission, analysisState, analysisProgress, runAnalysis, customAOI,
                           activeDistrict, setActiveDistrict, isLive, liveLoading, liveError,
                           supportsMissionAnalysis, backendStatus, analysisError, setActiveTab }) {
+  const [saveStatus, setSaveStatus] = useState('');
+  const [loadStatus, setLoadStatus] = useState('');
+  const [missionsList, setMissionsList] = useState([]);
+  const [showLoadModal, setShowLoadModal] = useState(false);
+
+  const handleSaveMission = async () => {
+    setSaveStatus('Saving...');
+    const { error } = await saveMission({
+      name: mission.name || 'Unnamed Mission',
+      district: activeDistrict,
+      aoi_geojson: customAOI,
+      parameters: mission,
+      selected_gun: mission.gunType,
+      num_guns: mission.numGuns,
+      num_batteries: mission.batteries,
+      bearing: mission.targetBearing,
+      day_night: mission.dayNight,
+      season: mission.season,
+      threat_level: mission.threatLevel
+    });
+    if (error) setSaveStatus('Error: ' + error);
+    else setSaveStatus('Saved!');
+    setTimeout(() => setSaveStatus(''), 3000);
+  };
+
+  const handleLoadMissionList = async () => {
+    setLoadStatus('Loading...');
+    setShowLoadModal(true);
+    const { data, error } = await loadMissions();
+    if (error) setLoadStatus('Error: ' + error);
+    else {
+      setMissionsList(data || []);
+      setLoadStatus('');
+    }
+  };
+
+  const applyMission = (m) => {
+    setMission(m.parameters || mission);
+    if (m.district) setActiveDistrict(m.district);
+    setShowLoadModal(false);
+  };
+
   return (
-    <>
-      <div className="sidebar-header">
+    <div style={{ position: 'relative' }}>
+      <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3><Settings size={13} /> Mission Parameters</h3>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button className="btn-secondary" style={{ fontSize: 10, padding: '2px 6px' }} onClick={handleLoadMissionList}>Load</button>
+          <button className="btn-primary" style={{ fontSize: 10, padding: '2px 6px' }} onClick={handleSaveMission}>Save</button>
+        </div>
       </div>
+      {saveStatus && <div style={{ padding: '4px 10px', fontSize: 11, background: '#1e293b', color: '#22c55e' }}>{saveStatus}</div>}
+      {showLoadModal && (
+        <div style={{ position: 'absolute', top: 40, left: 10, right: 10, background: '#0f172a', border: '1px solid #334155', padding: 10, zIndex: 100, borderRadius: 6 }}>
+           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+             <h4 style={{ margin: 0, fontSize: 12 }}>Saved Missions</h4>
+             <button onClick={() => setShowLoadModal(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>×</button>
+           </div>
+           {loadStatus && <div style={{ fontSize: 11, color: '#f59e0b' }}>{loadStatus}</div>}
+           <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+             {missionsList.map(m => (
+                <div key={m.id} style={{ padding: 6, borderBottom: '1px solid #1e293b', cursor: 'pointer', fontSize: 11 }} onClick={() => applyMission(m)}>
+                  {m.name || 'Unnamed'} ({new Date(m.created_at).toLocaleDateString()})
+                </div>
+             ))}
+             {missionsList.length === 0 && !loadStatus && <div style={{ fontSize: 11, color: '#94a3b8' }}>No saved missions.</div>}
+           </div>
+        </div>
+      )}
       <div className="sidebar-body">
         <div className="form-group">
           <label className="form-label">
@@ -2370,7 +2451,7 @@ function MissionSidebar({ mission, setMission, analysisState, analysisProgress, 
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -2959,6 +3040,21 @@ function RouteViewEnhanced({
   onExportKml,
   onSendMission,
 }) {
+  const [saveStatus, setSaveStatus] = useState('');
+
+  const handleSaveDrone = async () => {
+     if (!droneMission) return;
+     setSaveStatus('Saving...');
+     const { error } = await saveDroneRecceMission({
+       candidate_id: candidate?.id,
+       waypoints: droneMission.waypoints || [],
+       route: droneMission.geojson || {},
+       status: 'Not Assigned'
+     });
+     if (error) setSaveStatus('Error: ' + error);
+     else setSaveStatus('Saved!');
+     setTimeout(() => setSaveStatus(''), 3000);
+  };
   if (loading) {
     return (
       <div className="empty-state">
@@ -3193,6 +3289,12 @@ function RouteViewEnhanced({
               <button className="btn-secondary" onClick={() => onExportKml?.(droneMission, candidate)}>
                 <Download size={12} /> Export KML
               </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button className="btn-secondary" onClick={handleSaveDrone}>
+                Save to DB
+              </button>
+              {saveStatus && <span style={{ fontSize: 10, color: '#22c55e', alignSelf: 'center' }}>{saveStatus}</span>}
             </div>
 
             <div style={{ marginTop: 14, display: 'grid', gap: 8 }}>
@@ -3993,6 +4095,27 @@ function ReportView({ candidates, mission, district, terrainStats, summary, meta
 }
 
 function DashboardViewEnhanced({ candidates, routes, summary, allocations, setAllocations, mission, setActiveTab, district, aoi, assemblyArea }) {
+  const [saveStatus, setSaveStatus] = useState('');
+
+  const handleSaveAllocations = async () => {
+    setSaveStatus('Saving...');
+    let successCount = 0;
+    for (const [batteryNum, candidateId] of Object.entries(allocations)) {
+       const candidate = candidates.find(c => c.id === candidateId);
+       if (candidate) {
+         await saveBatteryAllocation({
+           battery_number: parseInt(batteryNum, 10),
+           candidate_id: candidateId,
+           status: 'Allocated',
+           score: candidate.totalScore
+         });
+         successCount++;
+       }
+    }
+    setSaveStatus(`Saved ${successCount} allocations`);
+    setTimeout(() => setSaveStatus(''), 3000);
+  };
+
   const handleExportKml = () => {
     const kml = buildMissionKml({
       mission, district, candidates, routes, aoi, assemblyArea,
@@ -4088,13 +4211,19 @@ function DashboardViewEnhanced({ candidates, routes, summary, allocations, setAl
 
   return (
     <div style={{ padding: 24, maxWidth: 1080, margin: '0 auto' }}>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1.5, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <BarChart2 size={11} /> Commander Dashboard
+      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <BarChart2 size={11} /> Commander Dashboard
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>{mission.name}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+            {GUN_TYPES[mission.gunType]?.name} x {mission.numGuns} guns · {mission.batteries} batteries · Bearing {mission.targetBearing} deg
+          </div>
         </div>
-        <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>{mission.name}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-          {GUN_TYPES[mission.gunType]?.name} x {mission.numGuns} guns · {mission.batteries} batteries · Bearing {mission.targetBearing} deg
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {saveStatus && <span style={{ fontSize: 10, color: '#22c55e' }}>{saveStatus}</span>}
+          <button className="btn-secondary" style={{ fontSize: 10, padding: '4px 10px' }} onClick={handleSaveAllocations}>Save Allocations</button>
         </div>
       </div>
 
@@ -4178,6 +4307,23 @@ function DashboardViewEnhanced({ candidates, routes, summary, allocations, setAl
 
 function ReportViewEnhanced({ candidates, routes, droneMissions, allocations, mission, district, terrainStats, summary }) {
   const reportRef = useRef(null);
+  const [saveStatus, setSaveStatus] = useState('');
+
+  const handleSaveReport = async () => {
+    setSaveStatus('Saving...');
+    const { error } = await saveReport({
+      title: (mission.name || 'Mission') + ' Report',
+      generated_data: summary,
+      final_recommendation: '',
+      ranked_candidates: candidates.map(c => ({ id: c.id, score: c.totalScore })),
+      route_summary: {},
+      risk_summary: []
+    });
+    if (error) setSaveStatus('Error: ' + error);
+    else setSaveStatus('Saved!');
+    setTimeout(() => setSaveStatus(''), 3000);
+  };
+
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -4219,7 +4365,13 @@ function ReportViewEnhanced({ candidates, routes, droneMissions, allocations, mi
   return (
     <div className="report-container fade-in" data-printable="report" ref={reportRef}>
       <div className="report-header">
-        <div className="report-classification">DEMO / RESTRICTED</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <div className="report-classification">DEMO / RESTRICTED</div>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {saveStatus && <span style={{ fontSize: 10, marginRight: 8, color: '#22c55e' }}>{saveStatus}</span>}
+            <button className="btn-secondary" style={{ fontSize: 10, padding: '2px 8px' }} onClick={handleSaveReport}>Save to DB</button>
+          </div>
+        </div>
         <div className="report-title">OPERATIONAL RECCE SUMMARY</div>
         <div className="report-meta">
           Mission: {mission.name}<br />
