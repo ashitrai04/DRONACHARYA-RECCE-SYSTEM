@@ -2147,6 +2147,7 @@ export default function App() {
         setDetailCandidate={setDetailCandidate}
         setAllocations={setAllocations}
         setCustomAOI={setCustomAOI}
+        runAnalysis={runAnalysis}
         analysisResult={analysisResult}
         candidates={CANDIDATES}
       />
