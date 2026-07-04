@@ -174,6 +174,7 @@ body {
   align-items: center;
   gap: 2px;
   flex: 1;
+  min-width: 0;
 }
 
 .nav-tab {
@@ -215,6 +216,7 @@ body {
   align-items: center;
   gap: 12px;
   margin-left: auto;
+  min-width: 0;
 }
 
 .status-indicator {
@@ -1815,7 +1817,16 @@ body::after {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-primary);
+  min-width: 0;   /* allow the name to shrink so ellipsis kicks in inside the chip */
 }
+
+/* The mission chip is the only item that shrinks; everything else on the right
+   keeps its size so the clock / status / tour never get pushed off-screen. */
+.navbar-mission { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.utc-clock,
+.status-indicator,
+.tour-trigger-btn,
+.version-badge { flex-shrink: 0; }
 
 .utc-clock {
   display: inline-flex;
@@ -1834,6 +1845,28 @@ body::after {
 }
 .utc-time {
   text-shadow: 0 0 6px rgba(56,189,248,0.4);
+}
+
+/* ── Navbar responsive fit ──────────────────────────────────────────────────
+   The HUD navbar is fixed to the viewport width and html/body have
+   overflow:hidden, so anything that doesn't fit is clipped (that's why the
+   clock/status/tour were disappearing off the right edge). As the window
+   narrows we drop the least-important items in order — brand subtitle →
+   version badge → mission chip → tab labels — so the clock + LIVE status +
+   Take-Tour button always stay on screen. ─────────────────────────────────── */
+@media (max-width: 1600px) {
+  .navbar-brand { margin-right: 20px; }
+  .navbar-brand .brand-product { display: none; }   /* long subtitle is the biggest space hog */
+  .version-badge { display: none; }
+  .navbar-mission { max-width: 130px; }
+  .navbar-right { gap: 8px; }
+}
+@media (max-width: 1360px) {
+  .navbar-mission { display: none; }                 /* mission name is still shown in the sidebar */
+}
+@media (max-width: 1200px) {
+  .tab-label { display: none; }                      /* icon-only tabs */
+  .nav-tab { padding-left: 10px; padding-right: 10px; }
 }
 
 .status-indicator.is-done {

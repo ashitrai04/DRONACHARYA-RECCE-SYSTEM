@@ -58,3 +58,42 @@ CREATE TABLE battery_allocations (
   score numeric,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- 3. Auto-prune: keep only the newest N rows per table so the free tier can
+--    never fill up. One generic trigger function handles every table (it reads
+--    the table name + keep-count from the trigger itself). It runs
+--    `security definer` so pruning works without granting the anon key delete
+--    rights. Each table keeps its newest 100 rows; older ones are deleted on
+--    every insert. Change the '100' below to keep more/fewer.
+
+CREATE OR REPLACE FUNCTION public.prune_keep_newest()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  EXECUTE format(
+    'delete from public.%I where id in ('
+    || 'select id from public.%I order by created_at desc, id desc offset %s)',
+    TG_TABLE_NAME, TG_TABLE_NAME, (TG_ARGV[0])::int
+  );
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_prune_missions ON missions;
+CREATE TRIGGER trg_prune_missions AFTER INSERT ON missions
+  FOR EACH STATEMENT EXECUTE FUNCTION public.prune_keep_newest('100');
+
+DROP TRIGGER IF EXISTS trg_prune_reports ON reports;
+CREATE TRIGGER trg_prune_reports AFTER INSERT ON reports
+  FOR EACH STATEMENT EXECUTE FUNCTION public.prune_keep_newest('100');
+
+DROP TRIGGER IF EXISTS trg_prune_drone_missions ON drone_missions;
+CREATE TRIGGER trg_prune_drone_missions AFTER INSERT ON drone_missions
+  FOR EACH STATEMENT EXECUTE FUNCTION public.prune_keep_newest('100');
+
+DROP TRIGGER IF EXISTS trg_prune_battery_allocations ON battery_allocations;
+CREATE TRIGGER trg_prune_battery_allocations AFTER INSERT ON battery_allocations
+  FOR EACH STATEMENT EXECUTE FUNCTION public.prune_keep_newest('100');
